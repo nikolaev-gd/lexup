@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_ui_auth/firebase_ui_auth.dart' as firebase_ui;
+import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -36,6 +37,7 @@ class AuthGate extends StatelessWidget {
           return firebase_ui.SignInScreen(
             providers: [
               firebase_ui.EmailAuthProvider(),
+              GoogleProvider(clientId: "1091391650743-bo683vtbjud52umtcbofbahm70sjnqo1.apps.googleusercontent.com"),
             ],
             headerBuilder: (context, constraints, shrinkOffset) {
               return Padding(
