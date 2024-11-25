@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ContentCard extends StatelessWidget {
   final String text;
@@ -11,13 +12,20 @@ class ContentCard extends StatelessWidget {
   }) : super(key: key);
 
   String get title {
-    final words = text.split(' ');
-    return words.length > 3 ? words.take(3).join(' ') : text;
+    final lines = text.split('\n');
+    if (lines.isNotEmpty) {
+      final firstLine = lines[0].replaceAll(RegExp(r'[#*_]'), '').trim();
+      return firstLine.length > 50 ? '${firstLine.substring(0, 47)}...' : firstLine;
+    }
+    return '';
   }
 
   String get previewText {
     final lines = text.split('\n');
-    return lines.length > 5 ? lines.take(5).join('\n') : text;
+    if (lines.length > 1) {
+      return lines.skip(1).take(4).join('\n');
+    }
+    return text;
   }
 
   @override
@@ -39,11 +47,13 @@ class ContentCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              Text(
-                previewText,
-                style: Theme.of(context).textTheme.bodyMedium,
-                maxLines: 5,
-                overflow: TextOverflow.fade,
+              MarkdownBody(
+                data: previewText,
+                shrinkWrap: true,
+                softLineBreak: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
             ],
           ),
