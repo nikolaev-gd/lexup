@@ -5,7 +5,9 @@ import 'package:firebase_ui_auth/firebase_ui_auth.dart' as firebase_ui;
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
-import 'add_content_screen.dart';  // Добавляем импорт нового экрана
+import 'add_content_screen.dart';
+import 'widgets/content_card.dart';
+import 'full_text_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,19 +69,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
-  static List<Widget> _widgetOptions = <Widget>[
-    HomeContent(),
-    Text('Learn Page'),
-    AddContentScreen(),  // Заменяем заглушку на новый экран
-    Text('Profile Page'),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,9 +83,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
-      ),
+      body: _buildBody(),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -123,105 +110,74 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  Widget _buildBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return HomeContent();
+      case 1:
+        return Center(child: Text('Learn Page'));
+      case 2:
+        return AddContentScreen();
+      case 3:
+        return Center(child: Text('Profile Page'));
+      default:
+        return Center(child: Text('Unknown Page'));
+    }
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 }
 
 class HomeContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome to Lexup, ${user?.email ?? 'User'}!',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          SizedBox(height: 20),
-          Text(
-            'Your learning journey starts here. Choose an option below:',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          SizedBox(height: 30),
-          ElevatedButton(
-            child: Text('Add Test Word to Firestore'),
-            onPressed: () async {
-              if (user != null) {
-                try {
-                  await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('words').add({
-                    'word': 'test',
-                    'translation': 'тест',
-                    'timestamp': FieldValue.serverTimestamp(),
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Test word added successfully!')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error adding test word: $e')),
-                  );
-                }
-              }
-            },
-          ),
-          SizedBox(height: 20),
-          ElevatedButton(
-            child: Text('View Saved Words'),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SavedWordsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .collection('content')
+          .orderBy('timestamp', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
 
-class SavedWordsScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Saved Words'),
-      ),
-      body: user == null
-          ? Center(child: Text('Please sign in to view saved words'))
-          : StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .collection('words')
-                  .orderBy('timestamp', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
 
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(child: Text('No content added yet'));
+        }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('No words saved yet'));
-                }
-
-                return ListView(
-                  children: snapshot.data!.docs.map((DocumentSnapshot document) {
-                    Map<String, dynamic> data = document.data() as Map<String, dynamic>;
-                    return ListTile(
-                      title: Text(data['word'] ?? ''),
-                      subtitle: Text(data['translation'] ?? ''),
-                    );
-                  }).toList(),
+        return ListView(
+          children: snapshot.data!.docs.map((DocumentSnapshot document) {
+            Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+            String text = data['text'] ?? '';
+            return ContentCard(
+              text: text,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FullTextScreen(
+                      text: text,
+                      title: text.split(' ').take(3).join(' '),
+                    ),
+                  ),
                 );
               },
-            ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }
