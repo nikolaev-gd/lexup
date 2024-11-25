@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_ui_auth/firebase_ui_auth.dart' as firebase_ui;
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -143,24 +144,83 @@ class HomeContent extends StatelessWidget {
           ),
           SizedBox(height: 30),
           ElevatedButton(
-            child: Text('Start Learning'),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Learning feature coming soon!')),
-              );
+            child: Text('Add Test Word to Firestore'),
+            onPressed: () async {
+              if (user != null) {
+                try {
+                  await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('words').add({
+                    'word': 'test',
+                    'translation': 'тест',
+                    'timestamp': FieldValue.serverTimestamp(),
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Test word added successfully!')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error adding test word: $e')),
+                  );
+                }
+              }
             },
           ),
-          SizedBox(height: 10),
+          SizedBox(height: 20),
           ElevatedButton(
-            child: Text('View Progress'),
+            child: Text('View Saved Words'),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Progress tracking coming soon!')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SavedWordsScreen()),
               );
             },
           ),
         ],
       ),
+    );
+  }
+}
+
+class SavedWordsScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Saved Words'),
+      ),
+      body: user == null
+          ? Center(child: Text('Please sign in to view saved words'))
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('words')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text('No words saved yet'));
+                }
+
+                return ListView(
+                  children: snapshot.data!.docs.map((DocumentSnapshot document) {
+                    Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+                    return ListTile(
+                      title: Text(data['word'] ?? ''),
+                      subtitle: Text(data['translation'] ?? ''),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
     );
   }
 }
