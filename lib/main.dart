@@ -5,6 +5,7 @@ import 'package:firebase_ui_auth/firebase_ui_auth.dart' as firebase_ui;
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
+import 'add_content_screen.dart';  // Добавляем импорт нового экрана
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,7 +70,7 @@ class _HomePageState extends State<HomePage> {
   static List<Widget> _widgetOptions = <Widget>[
     HomeContent(),
     Text('Learn Page'),
-    Text('Add Page'),
+    AddContentScreen(),  // Заменяем заглушку на новый экран
     Text('Profile Page'),
   ];
 
