@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:lexup/config/api_keys.dart';
@@ -11,7 +10,12 @@ class FullTextScreen extends StatefulWidget {
   final String title;
   final String documentId;
 
-  const FullTextScreen({Key? key, required this.text, required this.title, required this.documentId}) : super(key: key);
+  const FullTextScreen({
+    Key? key,
+    required this.text,
+    required this.title,
+    required this.documentId,
+  }) : super(key: key);
 
   @override
   _FullTextScreenState createState() => _FullTextScreenState();
@@ -26,59 +30,30 @@ class _FullTextScreenState extends State<FullTextScreen> {
   @override
   void initState() {
     super.initState();
-    _currentText = widget.text;
+    print("FullTextScreen initialized");
+    _currentText = _fixEncoding(widget.text);
     _loadSimplifiedText();
+    _checkApiConnection();
+  }
+
+  String _fixEncoding(String text) {
+    print("Fixing encoding");
+    return text
+        .replaceAll('â', "'")
+        .replaceAll('â', '"')
+        .replaceAll('â', '"')
+        .replaceAll('â', '–');
   }
 
   Future<void> _loadSimplifiedText() async {
+    print("Loading simplified text");
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final docSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('content')
-        .doc(widget.documentId)
-        .get();
-
-    if (docSnapshot.exists) {
-      setState(() {
-        _simplifiedText = docSnapshot.data()?['simplified_text'];
-      });
+    if (user == null) {
+      print("User is null");
+      return;
     }
-  }
 
-  Future<void> _saveSimplifiedText(String simplifiedText) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('content')
-        .doc(widget.documentId)
-        .update({
-      'simplified_text': simplifiedText,
-    });
-  }
-
-  Future<void> _simplifyText() async {
-    if (_simplifiedText == null) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Пожалуйста, войдите в систему для упрощения текста')),
-        );
-        return;
-      }
-
+    try {
       final docSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -86,58 +61,249 @@ class _FullTextScreenState extends State<FullTextScreen> {
           .doc(widget.documentId)
           .get();
 
-      if (docSnapshot.exists && docSnapshot.data()?['simplified_text'] != null) {
+      if (docSnapshot.exists) {
         setState(() {
-          _simplifiedText = docSnapshot.data()?['simplified_text'];
-          _currentText = _simplifiedText!;
-          _isSimplified = true;
-          _isLoading = false;
+          _simplifiedText = _fixEncoding(docSnapshot.data()?['simplified_text'] ?? '');
         });
+        print("Simplified text loaded: $_simplifiedText");
       } else {
+        print("Document does not exist");
+      }
+    } catch (e) {
+      print("Error loading simplified text: $e");
+    }
+  }
+
+  Future<void> _checkApiConnection() async {
+    print("Checking API connection");
+    print("API Key: ${openAiApiKey.substring(0, 5)}...");
+    if (openAiApiKey.isEmpty) {
+      print("API key is empty");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('API key is not set. Please check your configuration.'))
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $openAiApiKey'
+        },
+        body: jsonEncode({
+          'model': 'gpt-4',
+          'messages': [
+            {'role': 'user', 'content': 'Hello, this is a test message.'}
+          ]
+        })
+      );
+
+      print("API response status code: ${response.statusCode}");
+      print("API response body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        print("API connection successful");
+      } else {
+        print("API connection failed. Status code: ${response.statusCode}");
+        print("Response body: ${response.body}");
+      }
+    } catch (e) {
+      print("Error checking API connection: $e");
+    }
+  }
+
+  Future<void> _simplifyText() async {
+    print("_simplifyText called");
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      print("Current simplified text: $_simplifiedText");
+      print("Is simplified: $_isSimplified");
+
+      if (_simplifiedText == null || _simplifiedText!.isEmpty) {
+        print("Sending request to OpenAI API");
         final response = await http.post(
           Uri.parse('https://api.openai.com/v1/chat/completions'),
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $openAiApiKey',
+            'Authorization': 'Bearer $openAiApiKey'
           },
           body: jsonEncode({
-            'model': 'gpt-3.5-turbo',
+            'model': 'gpt-4',
             'messages': [
               {
                 'role': 'system',
-                'content': 'You are a helpful assistant that simplifies text.',
+                'content': 'You are a helpful assistant that simplifies text.'
               },
               {
                 'role': 'user',
-                'content': 'Simplify the following text, making it easier to understand while preserving the main ideas: ${widget.text}',
-              },
-            ],
-          }),
+                'content': 'Simplify the following text, making it easier to understand while preserving the main ideas: ${widget.text}'
+              }
+            ]
+          })
         );
 
+        print("Response status code: ${response.statusCode}");
+        print("Response body: ${response.body}");
+
         if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          final simplifiedText = data['choices'][0]['message']['content'];
-          await _saveSimplifiedText(simplifiedText);
-          setState(() {
-            _simplifiedText = simplifiedText;
-            _currentText = _simplifiedText!;
-            _isSimplified = true;
-            _isLoading = false;
-          });
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          _simplifiedText = _fixEncoding(data['choices'][0]['message']['content']);
+          print("New simplified text: $_simplifiedText");
+          
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('content')
+                .doc(widget.documentId)
+                .update({'simplified_text': _simplifiedText});
+            print("Simplified text saved to Firestore");
+          }
         } else {
-          setState(() {
-            _isLoading = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to simplify text. Please try again.')),
-          );
+          print("Error response: ${response.body}");
+          throw Exception('Failed to simplify text');
         }
       }
-    } else {
+
       setState(() {
         _isSimplified = !_isSimplified;
-        _currentText = _isSimplified ? _simplifiedText! : widget.text;
+        _currentText = _isSimplified ? _simplifiedText! : _fixEncoding(widget.text);
+      });
+      print("Is simplified after update: $_isSimplified");
+      print("Current text updated: $_currentText");
+    } catch (e) {
+      print("Error in _simplifyText: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to simplify text. Please try again.'))
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Widget _buildClickableText(String text) {
+    final paragraphs = text.split('\n\n');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: paragraphs.map((paragraph) {
+        final words = paragraph.split(' ');
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Wrap(
+            children: words.map((word) {
+              return GestureDetector(
+                onTap: () {
+                  print("Word tapped: $word");
+                  _showWordInfo(word, paragraph);
+                },
+                child: Text(
+                  '$word ',
+                  style: TextStyle(
+                    color: Colors.black,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Future<void> _showWordInfo(String word, String sentence) async {
+    print("Show word info for: $word");
+    print("Sentence: $sentence");
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $openAiApiKey'
+        },
+        body: jsonEncode({
+          'model': 'gpt-4',
+          'messages': [
+            {
+              'role': 'system',
+              'content': '''You are a helpful assistant that provides information about words in context.
+              Provide the following information:
+              1. Extracted phrase (collocation or minimal context)
+              2. Original sentence
+              3. Brief definition (up to 5 words)
+              4. Three common collocations
+              5. A new simple sentence using the extracted phrase'''
+            },
+            {
+              'role': 'user',
+              'content': 'Provide information for the word "$word" in the sentence: "$sentence"'
+            }
+          ]
+        })
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = data['choices'][0]['message']['content'];
+        final lines = content.split('\n');
+        
+        print("API response content: $content");
+        print("Lines: $lines");
+
+        List<Widget> contentWidgets = [];
+        for (var line in lines) {
+          if (line.isNotEmpty) {
+            contentWidgets.add(Text(line));
+            contentWidgets.add(SizedBox(height: 10));
+          }
+        }
+
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(word),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: contentWidgets,
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Close'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        throw Exception('Failed to get word information');
+      }
+    } catch (e) {
+      print("Error in _showWordInfo: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get word information. Please try again.'))
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }
@@ -153,23 +319,17 @@ class _FullTextScreenState extends State<FullTextScreen> {
           else
             IconButton(
               icon: Icon(_isSimplified ? Icons.undo : Icons.auto_awesome),
-              onPressed: _simplifyText,
+              onPressed: () {
+                print("Simplify button pressed");
+                _simplifyText();
+              },
               tooltip: _isSimplified ? 'Original' : 'Simplify',
-            ),
+            )
         ],
       ),
-      body: Markdown(
-        data: _currentText,
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        styleSheet: MarkdownStyleSheet(
-          p: Theme.of(context).textTheme.bodyLarge,
-          h1: Theme.of(context).textTheme.headlineMedium,
-          h2: Theme.of(context).textTheme.titleLarge,
-          h3: Theme.of(context).textTheme.titleMedium,
-          h4: Theme.of(context).textTheme.titleSmall,
-          h5: Theme.of(context).textTheme.bodyLarge,
-          h6: Theme.of(context).textTheme.bodyMedium,
-        ),
+        child: _buildClickableText(_currentText),
       ),
     );
   }
