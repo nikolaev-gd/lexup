@@ -183,7 +183,7 @@ class HomeContent extends StatelessWidget {
                     builder: (context) => FullTextScreen(
                       text: text,
                       link: link,
-                      title: text.isNotEmpty ? text.split(' ').take(3).join(' ') : 'Ссылка',
+                      title: text.isNotEmpty ? text.split(RegExp(r'\s+')).take(3).join(' ') : 'Ссылка',
                       documentId: document.id,
                     ),
                   ),

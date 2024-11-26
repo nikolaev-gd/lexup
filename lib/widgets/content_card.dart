@@ -16,11 +16,9 @@ class ContentCard extends StatelessWidget {
 
   String get title {
     if (text.isNotEmpty) {
-      final lines = text.split('\n');
-      if (lines.isNotEmpty) {
-        final firstLine = lines[0].replaceAll(RegExp(r'[#*_]'), '').trim();
-        return firstLine.length > 70 ? '${firstLine.substring(0, 67)}...' : firstLine;
-      }
+      final words = text.split(RegExp(r'\s+'));
+      final firstThreeWords = words.take(3).join(' ');
+      return firstThreeWords.length > 70 ? '${firstThreeWords.substring(0, 67)}...' : firstThreeWords;
     }
     return link.isNotEmpty ? 'Ссылка' : 'Нет содержимого';
   }
@@ -30,7 +28,7 @@ class ContentCard extends StatelessWidget {
       final lines = text.split('\n');
       if (lines.isEmpty) return '';
       if (lines.length == 1) return lines[0];
-      final previewLines = lines.skip(1).take(4).toList();
+      final previewLines = lines.take(5).toList();
       if (lines.length > 5) {
         previewLines.add('...');
       }
