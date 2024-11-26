@@ -19,7 +19,8 @@ dependencies:
   firebase_storage: ^11.5.6
   firebase_ui_auth: ^1.10.0
   firebase_ui_oauth_google: ^1.2.14
-  flutter_markdown: ^0.6.18  # Добавляем эту зависимость
+  flutter_markdown: ^0.6.18
+  http: ^1.1.0  # Добавляем эту зависимость
 
 dev_dependencies:
   flutter_test:
