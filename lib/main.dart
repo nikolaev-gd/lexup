@@ -170,6 +170,7 @@ class HomeContent extends StatelessWidget {
                     builder: (context) => FullTextScreen(
                       text: text,
                       title: text.split(' ').take(3).join(' '),
+                      documentId: document.id,
                     ),
                   ),
                 );
