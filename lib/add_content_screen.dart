@@ -22,7 +22,7 @@ class _AddContentScreenState extends State<AddContentScreen> {
       return;
     }
 
-    if (_textController.text.isEmpty && _linkController.text.isEmpty) {
+    if (_textController.text.trim().isEmpty && _linkController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Пожалуйста, введите текст или ссылку')),
       );
@@ -31,8 +31,8 @@ class _AddContentScreenState extends State<AddContentScreen> {
 
     try {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('content').add({
-        'text': _textController.text,
-        'link': _linkController.text,
+        'text': _textController.text.trim(),
+        'link': _linkController.text.trim(),
         'timestamp': FieldValue.serverTimestamp(),
       });
 
@@ -43,6 +43,9 @@ class _AddContentScreenState extends State<AddContentScreen> {
       // Очистка полей ввода после успешного сохранения
       _textController.clear();
       _linkController.clear();
+
+      // Переход на главную страницу
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (Route<dynamic> route) => false);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Ошибка при сохранении контента: $e')),

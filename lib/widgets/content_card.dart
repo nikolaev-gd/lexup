@@ -1,33 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ContentCard extends StatelessWidget {
   final String text;
+  final String link;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const ContentCard({
     Key? key,
     required this.text,
+    this.link = '',
     required this.onTap,
     required this.onDelete,
   }) : super(key: key);
 
   String get title {
-    final lines = text.split('\n');
-    if (lines.isNotEmpty) {
-      final firstLine = lines[0].replaceAll(RegExp(r'[#*_]'), '').trim();
-      return firstLine.length > 50 ? '${firstLine.substring(0, 47)}...' : firstLine;
+    if (text.isNotEmpty) {
+      final lines = text.split('\n');
+      if (lines.isNotEmpty) {
+        final firstLine = lines[0].replaceAll(RegExp(r'[#*_]'), '').trim();
+        return firstLine.length > 70 ? '${firstLine.substring(0, 67)}...' : firstLine;
+      }
     }
-    return '';
+    return link.isNotEmpty ? 'Ссылка' : 'Нет содержимого';
   }
 
   String get previewText {
-    final lines = text.split('\n');
-    if (lines.length > 1) {
-      return lines.skip(1).take(4).join('\n');
+    if (text.isNotEmpty) {
+      final lines = text.split('\n');
+      if (lines.isEmpty) return '';
+      if (lines.length == 1) return lines[0];
+      final previewLines = lines.skip(1).take(4).toList();
+      if (lines.length > 5) {
+        previewLines.add('...');
+      }
+      return previewLines.join('\n');
     }
-    return text;
+    return link.isNotEmpty ? link : 'Нет содержимого';
   }
 
   Future<void> _showDeleteConfirmationDialog(BuildContext context) async {
@@ -77,13 +86,11 @@ class ContentCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  MarkdownBody(
-                    data: previewText,
-                    shrinkWrap: true,
-                    softLineBreak: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                  Text(
+                    previewText,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    maxLines: 5,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

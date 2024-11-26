@@ -26,8 +26,19 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: AuthGate(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => MainPage(),
+        '/home': (context) => HomePage(),
+      },
     );
+  }
+}
+
+class MainPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AuthGate();
   }
 }
 
@@ -161,15 +172,18 @@ class HomeContent extends StatelessWidget {
           children: snapshot.data!.docs.map((DocumentSnapshot document) {
             Map<String, dynamic> data = document.data() as Map<String, dynamic>;
             String text = data['text'] ?? '';
+            String link = data['link'] ?? '';
             return ContentCard(
               text: text,
+              link: link,
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => FullTextScreen(
                       text: text,
-                      title: text.split(' ').take(3).join(' '),
+                      link: link,
+                      title: text.isNotEmpty ? text.split(' ').take(3).join(' ') : 'Ссылка',
                       documentId: document.id,
                     ),
                   ),

@@ -4,15 +4,18 @@ import 'dart:convert';
 import 'package:lexup/config/api_keys.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FullTextScreen extends StatefulWidget {
   final String text;
+  final String link;
   final String title;
   final String documentId;
 
   const FullTextScreen({
     Key? key,
     required this.text,
+    required this.link,
     required this.title,
     required this.documentId,
   }) : super(key: key);
@@ -115,6 +118,13 @@ class _FullTextScreenState extends State<FullTextScreen> {
   }
 
   Future<void> _simplifyText() async {
+    if (widget.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cannot simplify an empty text or a link.'))
+      );
+      return;
+    }
+
     print("_simplifyText called");
     setState(() {
       _isLoading = true;
@@ -308,6 +318,16 @@ class _FullTextScreenState extends State<FullTextScreen> {
     }
   }
 
+  Future<void> _launchURL(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not launch $url'))
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -316,20 +336,22 @@ class _FullTextScreenState extends State<FullTextScreen> {
         actions: [
           if (_isLoading)
             Center(child: CircularProgressIndicator(color: Colors.white))
-          else
+          else if (widget.text.isNotEmpty)
             IconButton(
               icon: Icon(_isSimplified ? Icons.undo : Icons.auto_awesome),
-              onPressed: () {
-                print("Simplify button pressed");
-                _simplifyText();
-              },
+              onPressed: _simplifyText,
               tooltip: _isSimplified ? 'Original' : 'Simplify',
             )
         ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: _buildClickableText(_currentText),
+        child: widget.text.isNotEmpty
+          ? _buildClickableText(_currentText)
+          : ElevatedButton(
+              onPressed: () => _launchURL(widget.link),
+              child: Text('Open Link'),
+            ),
       ),
     );
   }
