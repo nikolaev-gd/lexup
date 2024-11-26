@@ -29,6 +29,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
   String? _simplifiedText;
   bool _isSimplified = false;
   bool _isLoading = false;
+  double _fontSize = 18.0; // Добавляем переменную для размера шрифта
 
   @override
   void initState() {
@@ -208,6 +209,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
           child: Wrap(
+            spacing: 4.0, // Добавляем отступ между словами
             children: words.map((word) {
               return GestureDetector(
                 onTap: () {
@@ -215,10 +217,11 @@ class _FullTextScreenState extends State<FullTextScreen> {
                   _showWordInfo(word, paragraph);
                 },
                 child: Text(
-                  '$word ',
+                  word,
                   style: TextStyle(
                     color: Colors.black,
-                    decoration: TextDecoration.underline,
+                    fontSize: _fontSize, // Используем переменную размера шрифта
+                    // Убираем подчеркивание
                   ),
                 ),
               );
