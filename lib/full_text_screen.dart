@@ -98,7 +98,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
           'Authorization': 'Bearer $openAiApiKey'
         },
         body: jsonEncode({
-          'model': 'gpt-4',
+          'model': 'gpt-4o',
           'messages': [
             {'role': 'user', 'content': 'Hello, this is a test message.'}
           ]
@@ -145,7 +145,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
             'Authorization': 'Bearer $openAiApiKey'
           },
           body: jsonEncode({
-            'model': 'gpt-4',
+            'model': 'gpt-4o',
             'messages': [
               {
                 'role': 'system',
@@ -248,7 +248,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
           'Authorization': 'Bearer $openAiApiKey'
         },
         body: jsonEncode({
-          'model': 'gpt-4',
+          'model': 'gpt-4o',
           'messages': [
             {
               'role': 'system',
