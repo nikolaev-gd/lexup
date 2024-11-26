@@ -174,6 +174,23 @@ class HomeContent extends StatelessWidget {
                   ),
                 );
               },
+              onDelete: () async {
+                try {
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user?.uid)
+                      .collection('content')
+                      .doc(document.id)
+                      .delete();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Контент успешно удален')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Ошибка при удалении контента: $e')),
+                  );
+                }
+              },
             );
           }).toList(),
         );
