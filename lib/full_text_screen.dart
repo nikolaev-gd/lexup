@@ -29,7 +29,8 @@ class _FullTextScreenState extends State<FullTextScreen> {
   String? _simplifiedText;
   bool _isSimplified = false;
   bool _isLoading = false;
-  double _fontSize = 18.0; // Добавляем переменную для размера шрифта
+  double _fontSize = 18.0;
+  bool _shouldRefreshCards = true;
 
   @override
   void initState() {
@@ -209,7 +210,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
           child: Wrap(
-            spacing: 4.0, // Добавляем отступ между словами
+            spacing: 4.0,
             children: words.map((word) {
               return GestureDetector(
                 onTap: () {
@@ -220,8 +221,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
                   word,
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: _fontSize, // Используем переменную размера шрифта
-                    // Убираем подчеркивание
+                    fontSize: _fontSize,
                   ),
                 ),
               );
@@ -277,10 +277,18 @@ class _FullTextScreenState extends State<FullTextScreen> {
         print("Lines: $lines");
 
         List<Widget> contentWidgets = [];
+        Map<String, String> cardInfo = {};
         for (var line in lines) {
           if (line.isNotEmpty) {
             contentWidgets.add(Text(line));
             contentWidgets.add(SizedBox(height: 10));
+            
+            // Заполняем информацию для карточки
+            if (line.startsWith('1.')) cardInfo['extracted_phrase'] = line.substring(3);
+            if (line.startsWith('2.')) cardInfo['original_sentence'] = line.substring(3);
+            if (line.startsWith('3.')) cardInfo['brief_definition'] = line.substring(3);
+            if (line.startsWith('4.')) cardInfo['common_collocations'] = line.substring(3);
+            if (line.startsWith('5.')) cardInfo['example_sentence'] = line.substring(3);
           }
         }
 
@@ -299,6 +307,13 @@ class _FullTextScreenState extends State<FullTextScreen> {
                 TextButton(
                   child: Text('Close'),
                   onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextButton(
+                  child: Text('Save'),
+                  onPressed: () {
+                    _saveCard(word, cardInfo);
                     Navigator.of(context).pop();
                   },
                 ),
@@ -321,6 +336,48 @@ class _FullTextScreenState extends State<FullTextScreen> {
     }
   }
 
+  Future<void> _saveCard(String word, Map<String, String> cardInfo) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print("User is null");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('You must be logged in to save cards.'))
+      );
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('content')
+          .doc(widget.documentId)
+          .collection('cards')
+          .add({
+        'word': word,
+        'extracted_phrase': cardInfo['extracted_phrase'],
+        'original_sentence': cardInfo['original_sentence'],
+        'brief_definition': cardInfo['brief_definition'],
+        'common_collocations': cardInfo['common_collocations'],
+        'example_sentence': cardInfo['example_sentence'],
+        'created_at': FieldValue.serverTimestamp(),
+      });
+
+      print("Card saved successfully");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Card saved successfully'))
+      );
+      setState(() {
+        _shouldRefreshCards = true;
+      });
+    } catch (e) {
+      print("Error saving card: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save card. Please try again.'))
+      );
+    }
+  }
+
   Future<void> _launchURL(String url) async {
     if (await canLaunch(url)) {
       await launch(url);
@@ -329,6 +386,57 @@ class _FullTextScreenState extends State<FullTextScreen> {
         SnackBar(content: Text('Could not launch $url'))
       );
     }
+  }
+
+  Widget _buildSavedCards() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .collection('content')
+          .doc(widget.documentId)
+          .collection('cards')
+          .orderBy('created_at', descending: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text('Something went wrong');
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator();
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Text('No saved cards');
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: snapshot.data!.docs.map((DocumentSnapshot document) {
+            Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+            return Card(
+              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(data['word'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 8),
+                    Text('Extracted phrase: ${data['extracted_phrase']}'),
+                    Text('Original sentence: ${data['original_sentence']}'),
+                    Text('Brief definition: ${data['brief_definition']}'),
+                    Text('Common collocations: ${data['common_collocations']}'),
+                    Text('Example sentence: ${data['example_sentence']}'),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
   }
 
   @override
@@ -349,12 +457,25 @@ class _FullTextScreenState extends State<FullTextScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: widget.text.isNotEmpty
-          ? _buildClickableText(_currentText)
-          : ElevatedButton(
-              onPressed: () => _launchURL(widget.link),
-              child: Text('Open Link'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.text.isNotEmpty)
+              _buildClickableText(_currentText)
+            else
+              ElevatedButton(
+                onPressed: () => _launchURL(widget.link),
+                child: Text('Open Link'),
+              ),
+            SizedBox(height: 20),
+            Text(
+              'Saved Cards',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
+            SizedBox(height: 10),
+            _buildSavedCards(),
+          ],
+        ),
       ),
     );
   }
