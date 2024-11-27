@@ -3,8 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lexup/services/api_service.dart';
-import 'package:lexup/services/firestore_service.dart'; // Исправленный импорт
-import 'package:lexup/models/card_model.dart'; // Импорт модели карточек
+import 'package:lexup/services/firestore_service.dart';
+import 'package:lexup/models/card_model.dart';
+import 'package:lexup/widgets/clickable_text.dart';
+import 'package:lexup/widgets/saved_cards.dart';
 
 class FullTextScreen extends StatefulWidget {
   final String text;
@@ -120,37 +122,6 @@ class _FullTextScreenState extends State<FullTextScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  Widget _buildClickableText(String text) {
-    final paragraphs = text.split('\n\n');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: paragraphs.map((paragraph) {
-        final words = paragraph.split(' ');
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: Wrap(
-            spacing: 4.0,
-            children: words.map((word) {
-              return GestureDetector(
-                onTap: () {
-                  print("Word tapped: $word");
-                  _showWordInfo(word, paragraph);
-                },
-                child: Text(
-                  word,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: _fontSize,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        );
-      }).toList(),
-    );
   }
 
   Future<void> _showWordInfo(String word, String sentence) async {
@@ -289,60 +260,6 @@ class _FullTextScreenState extends State<FullTextScreen> {
     }
   }
 
-  Widget _buildSavedCards() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestoreService.getSavedCardsStream(widget.documentId),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Text('Something went wrong');
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator();
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Text('No saved cards');
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: snapshot.data!.docs.map((DocumentSnapshot document) {
-            Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
-            final cardModel = CardModel.fromMap(data);
-            return Card(
-              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(cardModel.word, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteCard(document.id),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Text('Extracted phrase: ${cardModel.extractedPhrase}'),
-                    Text('Original sentence: ${cardModel.originalSentence}'),
-                    Text('Brief definition: ${cardModel.briefDefinition}'),
-                    Text('Common collocations: ${cardModel.commonCollocations}'),
-                    Text('Example sentence: ${cardModel.exampleSentence}'),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -365,7 +282,11 @@ class _FullTextScreenState extends State<FullTextScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.text.isNotEmpty)
-              _buildClickableText(_currentText)
+              ClickableText(
+                text: _currentText,
+                fontSize: _fontSize,
+                onWordTap: _showWordInfo,
+              )
             else
               ElevatedButton(
                 onPressed: () => _launchURL(widget.link),
@@ -377,7 +298,10 @@ class _FullTextScreenState extends State<FullTextScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
-            _buildSavedCards(),
+            SavedCards(
+              cardStream: _firestoreService.getSavedCardsStream(widget.documentId),
+              onDeleteCard: _deleteCard,
+            ),
           ],
         ),
       ),
