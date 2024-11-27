@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lexup/services/api_service.dart';
-import 'package:lexup/services/firestore_service.dart';
+import 'package:lexup/services/firestore_service.dart'; // Исправленный импорт
+import 'package:lexup/models/card_model.dart'; // Импорт модели карточек
 
 class FullTextScreen extends StatefulWidget {
   final String text;
@@ -162,6 +163,14 @@ class _FullTextScreenState extends State<FullTextScreen> {
 
     try {
       final cardInfo = await _apiService.getWordInfo(word, sentence);
+      final cardModel = CardModel(
+        word: word,
+        extractedPhrase: cardInfo['extracted_phrase'] ?? '',
+        originalSentence: cardInfo['original_sentence'] ?? '',
+        briefDefinition: cardInfo['brief_definition'] ?? '',
+        commonCollocations: cardInfo['common_collocations'] ?? '',
+        exampleSentence: cardInfo['example_sentence'] ?? '',
+      );
       
       showDialog(
         context: context,
@@ -171,7 +180,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
             content: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: cardInfo.entries.map((entry) {
+                children: cardModel.toMap().entries.map((entry) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -192,7 +201,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
               TextButton(
                 child: Text('Save'),
                 onPressed: () {
-                  _saveCard(word, cardInfo);
+                  _saveCard(cardModel);
                   Navigator.of(context).pop();
                 },
               ),
@@ -212,9 +221,9 @@ class _FullTextScreenState extends State<FullTextScreen> {
     }
   }
 
-  Future<void> _saveCard(String word, Map<String, String> cardInfo) async {
+  Future<void> _saveCard(CardModel cardModel) async {
     try {
-      await _firestoreService.saveCard(widget.documentId, word, cardInfo);
+      await _firestoreService.saveCard(widget.documentId, cardModel.word, cardModel.toMap());
       print("Card saved successfully");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Card saved successfully'))
@@ -300,6 +309,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: snapshot.data!.docs.map((DocumentSnapshot document) {
             Map<String, dynamic> data = document.data()! as Map<String, dynamic>;
+            final cardModel = CardModel.fromMap(data);
             return Card(
               margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
               child: Padding(
@@ -310,7 +320,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(data['word'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text(cardModel.word, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         IconButton(
                           icon: Icon(Icons.delete, color: Colors.red),
                           onPressed: () => _deleteCard(document.id),
@@ -318,11 +328,11 @@ class _FullTextScreenState extends State<FullTextScreen> {
                       ],
                     ),
                     SizedBox(height: 8),
-                    Text('Extracted phrase: ${data['extracted_phrase']}'),
-                    Text('Original sentence: ${data['original_sentence']}'),
-                    Text('Brief definition: ${data['brief_definition']}'),
-                    Text('Common collocations: ${data['common_collocations']}'),
-                    Text('Example sentence: ${data['example_sentence']}'),
+                    Text('Extracted phrase: ${cardModel.extractedPhrase}'),
+                    Text('Original sentence: ${cardModel.originalSentence}'),
+                    Text('Brief definition: ${cardModel.briefDefinition}'),
+                    Text('Common collocations: ${cardModel.commonCollocations}'),
+                    Text('Example sentence: ${cardModel.exampleSentence}'),
                   ],
                 ),
               ),

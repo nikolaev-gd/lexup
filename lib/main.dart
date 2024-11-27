@@ -7,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'add_content_screen.dart';
 import 'widgets/content_card.dart';
-import 'full_text_screen.dart';
+import 'screens/full_text_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
