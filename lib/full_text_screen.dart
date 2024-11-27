@@ -98,7 +98,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
           'Authorization': 'Bearer $openAiApiKey'
         },
         body: jsonEncode({
-          'model': 'gpt-4o',
+          'model': 'chatgpt-4o-latest',
           'messages': [
             {'role': 'user', 'content': 'Hello, this is a test message.'}
           ]
@@ -145,7 +145,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
             'Authorization': 'Bearer $openAiApiKey'
           },
           body: jsonEncode({
-            'model': 'gpt-4o',
+            'model': 'chatgpt-4o-latest',
             'messages': [
               {
                 'role': 'system',
@@ -248,7 +248,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
           'Authorization': 'Bearer $openAiApiKey'
         },
         body: jsonEncode({
-          'model': 'gpt-4o',
+          'model': 'chatgpt-4o-latest',
           'messages': [
             {
               'role': 'system',
@@ -378,6 +378,65 @@ class _FullTextScreenState extends State<FullTextScreen> {
     }
   }
 
+  Future<void> _deleteCard(String cardId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print("User is null");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('You must be logged in to delete cards.'))
+      );
+      return;
+    }
+
+    // Показываем диалог подтверждения
+    bool? confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Подтверждение удаления'),
+          content: Text('Вы уверены, что хотите удалить эту карточку?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Отмена'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: Text('Удалить'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Если пользователь подтвердил удаление
+    if (confirmDelete == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('content')
+            .doc(widget.documentId)
+            .collection('cards')
+            .doc(cardId)
+            .delete();
+
+        print("Card deleted successfully");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Card deleted successfully'))
+        );
+        setState(() {
+          _shouldRefreshCards = true;
+        });
+      } catch (e) {
+        print("Error deleting card: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete card. Please try again.'))
+        );
+      }
+    }
+  }
+
   Future<void> _launchURL(String url) async {
     if (await canLaunch(url)) {
       await launch(url);
@@ -422,7 +481,16 @@ class _FullTextScreenState extends State<FullTextScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(data['word'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(data['word'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteCard(document.id),
+                        ),
+                      ],
+                    ),
                     SizedBox(height: 8),
                     Text('Extracted phrase: ${data['extracted_phrase']}'),
                     Text('Original sentence: ${data['original_sentence']}'),
