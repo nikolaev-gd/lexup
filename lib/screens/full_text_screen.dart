@@ -7,6 +7,7 @@ import 'package:lexup/services/firestore_service.dart';
 import 'package:lexup/models/card_model.dart';
 import 'package:lexup/widgets/clickable_text.dart';
 import 'package:lexup/widgets/saved_cards.dart';
+import 'package:lexup/utils/text_utils.dart';
 
 class FullTextScreen extends StatefulWidget {
   final String text;
@@ -40,18 +41,9 @@ class _FullTextScreenState extends State<FullTextScreen> {
   void initState() {
     super.initState();
     print("FullTextScreen initialized");
-    _currentText = _fixEncoding(widget.text);
+    _currentText = TextUtils.fixEncoding(widget.text);
     _loadSimplifiedText();
     _checkApiConnection();
-  }
-
-  String _fixEncoding(String text) {
-    print("Fixing encoding");
-    return text
-        .replaceAll('â', "'")
-        .replaceAll('â', '"')
-        .replaceAll('â', '"')
-        .replaceAll('â', '–');
   }
 
   Future<void> _loadSimplifiedText() async {
@@ -60,7 +52,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
       final simplifiedText = await _firestoreService.loadSimplifiedText(widget.documentId);
       if (simplifiedText != null) {
         setState(() {
-          _simplifiedText = _fixEncoding(simplifiedText);
+          _simplifiedText = TextUtils.fixEncoding(simplifiedText);
         });
         print("Simplified text loaded: $_simplifiedText");
       } else {
@@ -99,7 +91,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
 
       if (_simplifiedText == null || _simplifiedText!.isEmpty) {
         _simplifiedText = await _apiService.simplifyText(widget.text);
-        _simplifiedText = _fixEncoding(_simplifiedText!);
+        _simplifiedText = TextUtils.fixEncoding(_simplifiedText!);
         print("New simplified text: $_simplifiedText");
         
         await _firestoreService.saveSimplifiedText(widget.documentId, _simplifiedText!);
@@ -108,7 +100,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
 
       setState(() {
         _isSimplified = !_isSimplified;
-        _currentText = _isSimplified ? _simplifiedText! : _fixEncoding(widget.text);
+        _currentText = _isSimplified ? _simplifiedText! : TextUtils.fixEncoding(widget.text);
       });
       print("Is simplified after update: $_isSimplified");
       print("Current text updated: $_currentText");
