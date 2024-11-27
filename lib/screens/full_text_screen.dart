@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lexup/services/api_service.dart';
+import 'package:lexup/services/firestore_service.dart';
 
 class FullTextScreen extends StatefulWidget {
   final String text;
@@ -30,6 +31,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
   double _fontSize = 18.0;
   bool _shouldRefreshCards = true;
   final ApiService _apiService = ApiService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
@@ -51,27 +53,15 @@ class _FullTextScreenState extends State<FullTextScreen> {
 
   Future<void> _loadSimplifiedText() async {
     print("Loading simplified text");
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print("User is null");
-      return;
-    }
-
     try {
-      final docSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('content')
-          .doc(widget.documentId)
-          .get();
-
-      if (docSnapshot.exists) {
+      final simplifiedText = await _firestoreService.loadSimplifiedText(widget.documentId);
+      if (simplifiedText != null) {
         setState(() {
-          _simplifiedText = _fixEncoding(docSnapshot.data()?['simplified_text'] ?? '');
+          _simplifiedText = _fixEncoding(simplifiedText);
         });
         print("Simplified text loaded: $_simplifiedText");
       } else {
-        print("Document does not exist");
+        print("Simplified text not found");
       }
     } catch (e) {
       print("Error loading simplified text: $e");
@@ -109,16 +99,8 @@ class _FullTextScreenState extends State<FullTextScreen> {
         _simplifiedText = _fixEncoding(_simplifiedText!);
         print("New simplified text: $_simplifiedText");
         
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('content')
-              .doc(widget.documentId)
-              .update({'simplified_text': _simplifiedText});
-          print("Simplified text saved to Firestore");
-        }
+        await _firestoreService.saveSimplifiedText(widget.documentId, _simplifiedText!);
+        print("Simplified text saved to Firestore");
       }
 
       setState(() {
@@ -231,28 +213,8 @@ class _FullTextScreenState extends State<FullTextScreen> {
   }
 
   Future<void> _saveCard(String word, Map<String, String> cardInfo) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print("User is null");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('You must be logged in to save cards.'))
-      );
-      return;
-    }
-
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('content')
-          .doc(widget.documentId)
-          .collection('cards')
-          .add({
-        'word': word,
-        ...cardInfo,
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
+      await _firestoreService.saveCard(widget.documentId, word, cardInfo);
       print("Card saved successfully");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Card saved successfully'))
@@ -269,15 +231,6 @@ class _FullTextScreenState extends State<FullTextScreen> {
   }
 
   Future<void> _deleteCard(String cardId) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print("User is null");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('You must be logged in to delete cards.'))
-      );
-      return;
-    }
-
     bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -300,15 +253,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
 
     if (confirmDelete == true) {
       try {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('content')
-            .doc(widget.documentId)
-            .collection('cards')
-            .doc(cardId)
-            .delete();
-
+        await _firestoreService.deleteCard(widget.documentId, cardId);
         print("Card deleted successfully");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Card deleted successfully'))
@@ -337,14 +282,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
 
   Widget _buildSavedCards() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser!.uid)
-          .collection('content')
-          .doc(widget.documentId)
-          .collection('cards')
-          .orderBy('created_at', descending: false)
-          .snapshots(),
+      stream: _firestoreService.getSavedCardsStream(widget.documentId),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Text('Something went wrong');
