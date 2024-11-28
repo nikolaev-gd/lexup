@@ -191,14 +191,33 @@ class HomeContent extends StatelessWidget {
               },
               onDelete: () async {
                 try {
-                  await FirebaseFirestore.instance
+                  // Удаление всех карточек слов, связанных с этой карточкой контента
+                  final cardsSnapshot = await FirebaseFirestore.instance
                       .collection('users')
                       .doc(user?.uid)
                       .collection('content')
                       .doc(document.id)
-                      .delete();
+                      .collection('cards')
+                      .get();
+
+                  final batch = FirebaseFirestore.instance.batch();
+
+                  for (var cardDoc in cardsSnapshot.docs) {
+                    batch.delete(cardDoc.reference);
+                  }
+
+                  // Удаление самой карточки контента
+                  batch.delete(FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user?.uid)
+                      .collection('content')
+                      .doc(document.id));
+
+                  // Выполнение всех операций удаления
+                  await batch.commit();
+
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Контент успешно удален')),
+                    SnackBar(content: Text('Контент и связанные карточки слов успешно удалены')),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
