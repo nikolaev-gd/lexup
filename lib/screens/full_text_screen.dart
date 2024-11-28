@@ -37,6 +37,16 @@ class _FullTextScreenState extends State<FullTextScreen> {
   final ApiService _apiService = ApiService();
   final FirestoreService _firestoreService = FirestoreService();
 
+  String _extractSentence(String text, String word) {
+    // Разбиваем текст на предложения
+    final sentences = text.split(RegExp(r'(?<=[.!?])\s+'));
+    // Ищем предложение, содержащее слово
+    return sentences.firstWhere(
+      (sentence) => sentence.toLowerCase().contains(word.toLowerCase()),
+      orElse: () => text, // Если не найдено, возвращаем весь текст
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -118,14 +128,18 @@ class _FullTextScreenState extends State<FullTextScreen> {
 
   Future<void> _showWordInfo(String word, String sentence) async {
     print("Show word info for: $word");
-    print("Sentence: $sentence");
+    print("Full sentence context: $sentence");
+
+    // Извлекаем только предложение, содержащее слово
+    final relevantSentence = _extractSentence(sentence, word);
+    print("Extracted relevant sentence: $relevantSentence");
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final cardInfo = await _apiService.getWordInfo(word, sentence);
+      final cardInfo = await _apiService.getWordInfo(word, relevantSentence);
       final cardModel = CardModel(
         word: word,
         extractedPhrase: cardInfo['extracted_phrase'] ?? '',
@@ -139,19 +153,22 @@ class _FullTextScreenState extends State<FullTextScreen> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text(word),
+            title: Text(cardModel.word),
             content: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: cardModel.toMap().entries.map((entry) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${entry.key}: ${entry.value}'),
-                      SizedBox(height: 10),
-                    ],
-                  );
-                }).toList(),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(cardModel.extractedPhrase),
+                  SizedBox(height: 10),
+                  Text(cardModel.originalSentence),
+                  SizedBox(height: 10),
+                  Text(cardModel.briefDefinition),
+                  SizedBox(height: 10),
+                  Text(cardModel.commonCollocations),
+                  SizedBox(height: 10),
+                  Text(cardModel.exampleSentence),
+                ],
               ),
             ),
             actions: <Widget>[

@@ -74,27 +74,71 @@ class ApiService {
 
   Future<Map<String, String>> getWordInfo(String word, String sentence) async {
     try {
+      final messages = [
+        {
+          'role': 'system',
+          'content': '''You are tasked with extracting a collocation (extractedPhrase) involving the word `$word` from the sentence `$sentence`. Follow these steps carefully:
+
+1. Identify the minimal collocation (extractedPhrase):  
+   Look at the sentence `$sentence` and find the simplest verb-noun or noun-adjective combination that includes `$word`. This phrase should represent how the word is commonly used in context. Exclude any unnecessary descriptive words, focusing only on the most essential part.
+
+2. Restate the full original sentence:  
+   Include the original sentence `$sentence` exactly as it was provided, without any additional text.
+
+3. Provide a brief definition (briefDefinition):  
+   Give a concise definition (maximum 5 words) of `$word`, considering its role in the extracted phrase. The definition should clarify the word's meaning in this specific usage.
+
+4. List three common collocations (commonCollocations):  
+   Provide three additional common collocations that typically include `$word`. These collocations should be separated by commas.
+
+5. Create a new sentence (newSentence) using the extracted collocation (extractedPhrase):  
+   Write a new, simple sentence that uses the EXACT extracted collocation (extractedPhrase) in a meaningful context. This sentence should help reinforce the typical usage of the collocation.
+
+Output Format (Strictly adhere to this):
+
+1. The collocation or phrase you extracted from the sentence (must be at least two words).
+2. The full original sentence.
+3. A brief definition (up to 5 words) of the word `$word`.
+4. Three common collocations, separated by commas.
+5. A new simple sentence using the exact extracted collocation.
+
+Example Input:
+
+- Sentence: "John had to take a deep breath before giving his speech."
+- Word: "breath"
+
+Example Output:
+
+take a deep breath
+John had to take a deep breath before giving his speech.
+inhale and exhale slowly
+catch your breath, hold your breath, deep breath
+Remember to take a deep breath when you're nervous.
+
+Additional Notes:
+
+- Focus on extracting a collocation that is both grammatically correct and commonly used in everyday language.
+- Make sure to strictly follow the output format without adding any extra lines or text outside of the specified format.
+- Ensure the definition is simple and concise, using common, easy-to-understand language.
+- For the additional collocations, make sure they are practical and commonly used with `$word`.
+- The example sentence MUST use the exact extracted collocation, not just the target word.
+- Do not include any labels or prefixes (like "Full original sentence:", "Brief definition:", etc.) in your output.'''
+        },
+        {
+          'role': 'user',
+          'content': 'Provide information for the word "$word" in the sentence: "$sentence"'
+        }
+      ];
+
+      print('Sending request to ChatGPT with the following content:');
+      print(json.encode(messages));
+
       final response = await http.post(
         Uri.parse(_baseUrl),
         headers: _getHeaders(),
         body: jsonEncode({
           'model': _model,
-          'messages': [
-            {
-              'role': 'system',
-              'content': '''You are a helpful assistant that provides information about words in context.
-              Provide the following information:
-              1. Extracted phrase (collocation or minimal context)
-              2. Original sentence
-              3. Brief definition (up to 5 words)
-              4. Three common collocations
-              5. A new simple sentence using the extracted phrase'''
-            },
-            {
-              'role': 'user',
-              'content': 'Provide information for the word "$word" in the sentence: "$sentence"'
-            }
-          ]
+          'messages': messages,
         })
       );
 
@@ -103,15 +147,21 @@ class ApiService {
         final content = data['choices'][0]['message']['content'];
         final lines = content.split('\n');
         
-        Map<String, String> cardInfo = {};
-        for (var line in lines) {
-          if (line.startsWith('1.')) cardInfo['extracted_phrase'] = line.substring(3);
-          if (line.startsWith('2.')) cardInfo['original_sentence'] = line.substring(3);
-          if (line.startsWith('3.')) cardInfo['brief_definition'] = line.substring(3);
-          if (line.startsWith('4.')) cardInfo['common_collocations'] = line.substring(3);
-          if (line.startsWith('5.')) cardInfo['example_sentence'] = line.substring(3);
+        Map<String, String> result = {};
+        final keys = ['extracted_phrase', 'original_sentence', 'brief_definition', 'common_collocations', 'example_sentence'];
+        
+        for (int i = 0; i < lines.length && i < keys.length; i++) {
+          String cleanedLine = _cleanLine(lines[i]);
+          if (cleanedLine.isNotEmpty) {
+            result[keys[i]] = cleanedLine;
+          }
         }
-        return cardInfo;
+
+        if (result.length == 5) {
+          return result;
+        } else {
+          throw Exception('Invalid response format');
+        }
       } else {
         throw Exception('Failed to get word information');
       }
@@ -119,6 +169,14 @@ class ApiService {
       print("Error in getWordInfo: $e");
       throw Exception('Failed to get word information');
     }
+  }
+
+  String _cleanLine(String line) {
+    return line
+      .replaceFirst(RegExp(r'^\d+\.\s*'), '')
+      .replaceAll(RegExp(r'^(Full original sentence|Brief definition|Common collocations|New sentence):\s*'), '')
+      .replaceAll(RegExp(r'["""]'), '')
+      .trim();
   }
 
   Map<String, String> _getHeaders() {
