@@ -9,6 +9,7 @@
 1. Изучение документации:
    - Начните с [project-map.md](project-map.md) для общего понимания проекта
    - Изучите [current-state.md](current-state.md) для понимания текущего состояния
+   - Ознакомьтесь с [api-documentation.md](api-documentation.md) для понимания работы с OpenAI API
    - Используйте навигацию из project-map.md для углубления в конкретные аспекты
 
 2. Подтверждение понимания:
@@ -223,3 +224,4 @@
 - [current-state.md](current-state.md) - Текущее состояние
 - [components-map.md](components-map.md) - Карта компонентов
 - [entities.md](entities.md) - Описание сущностей
+- [api-documentation.md](api-documentation.md) - Документация по работе с OpenAI API
