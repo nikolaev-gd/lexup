@@ -44,7 +44,22 @@ class SavedCards extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(cardModel.word, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(fontSize: 18, color: Colors.black),
+                              children: [
+                                TextSpan(
+                                  text: cardModel.word,
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan(
+                                  text: cardModel.extractedPhrase.substring(cardModel.word.length),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         IconButton(
                           icon: Icon(Icons.delete, color: Colors.red),
                           onPressed: () => onDeleteCard(document.id),
@@ -52,8 +67,6 @@ class SavedCards extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: 8),
-                    Text(cardModel.extractedPhrase),
-                    SizedBox(height: 4),
                     Text(cardModel.originalSentence),
                     SizedBox(height: 4),
                     Text(cardModel.briefDefinition),
