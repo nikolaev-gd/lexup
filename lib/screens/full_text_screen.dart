@@ -153,20 +153,43 @@ class _FullTextScreenState extends State<FullTextScreen> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text(cardModel.word),
             content: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(cardModel.extractedPhrase),
+                  // Заголовок с extracted_phrase и выделенным словом
+                  RichText(
+                    text: TextSpan(
+                      style: TextStyle(fontSize: 18, color: Colors.black),
+                      children: [
+                        TextSpan(
+                          text: cardModel.word,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text: cardModel.extractedPhrase.substring(cardModel.word.length),
+                        ),
+                      ],
+                    ),
+                  ),
                   SizedBox(height: 10),
+                  // Оригинальное предложение
                   Text(cardModel.originalSentence),
                   SizedBox(height: 10),
-                  Text(cardModel.briefDefinition),
+                  // Определение (выделено курсивом и цветом)
+                  Text(
+                    cardModel.briefDefinition,
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.blue[700],
+                    ),
+                  ),
                   SizedBox(height: 10),
+                  // Распространенные словосочетания
                   Text(cardModel.commonCollocations),
                   SizedBox(height: 10),
+                  // Пример предложения
                   Text(cardModel.exampleSentence),
                 ],
               ),
