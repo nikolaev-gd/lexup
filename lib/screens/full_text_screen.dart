@@ -222,31 +222,41 @@ class _FullTextScreenState extends State<FullTextScreen> {
                     ),
                   ),
                   SizedBox(height: 10),
-                  Text(cardModel.originalSentence),
+                  Text(
+                    cardModel.originalSentence,
+                    style: TextStyle(fontSize: 18),
+                  ),
                   SizedBox(height: 10),
                   Text(
                     cardModel.briefDefinition,
                     style: TextStyle(
+                      fontSize: 18,
                       fontStyle: FontStyle.italic,
                       color: Colors.blue[700],
                     ),
                   ),
                   SizedBox(height: 10),
-                  Text(cardModel.commonCollocations),
+                  Text(
+                    cardModel.commonCollocations,
+                    style: TextStyle(fontSize: 18),
+                  ),
                   SizedBox(height: 10),
-                  Text(cardModel.exampleSentence),
+                  Text(
+                    cardModel.exampleSentence,
+                    style: TextStyle(fontSize: 18),
+                  ),
                 ],
               ),
             ),
             actions: <Widget>[
               TextButton(
-                child: Text('Close'),
+                child: Text('Close', style: TextStyle(fontSize: 18)),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
               ),
               TextButton(
-                child: Text('Save'),
+                child: Text('Save', style: TextStyle(fontSize: 18)),
                 onPressed: () {
                   _saveCard(cardModel);
                   Navigator.of(context).pop();
@@ -291,15 +301,15 @@ class _FullTextScreenState extends State<FullTextScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Подтверждение удаления'),
-          content: Text('Вы уверены, что хотите удалить эту карточку?'),
+          title: Text('Подтверждение удаления', style: TextStyle(fontSize: 18)),
+          content: Text('Вы уверены, что хотите удалить эту карточку?', style: TextStyle(fontSize: 18)),
           actions: <Widget>[
             TextButton(
-              child: Text('Отмена'),
+              child: Text('Отмена', style: TextStyle(fontSize: 18)),
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
-              child: Text('Удалить'),
+              child: Text('Удалить', style: TextStyle(fontSize: 18)),
               onPressed: () => Navigator.of(context).pop(true),
             ),
           ],
@@ -366,7 +376,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
             else
               ElevatedButton(
                 onPressed: () => _launchURL(widget.link),
-                child: Text('Open Link'),
+                child: Text('Open Link', style: TextStyle(fontSize: 18)),
               ),
             SizedBox(height: 20),
             Text(

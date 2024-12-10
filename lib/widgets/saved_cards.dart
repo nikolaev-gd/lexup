@@ -85,7 +85,7 @@ class SavedCards extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           print('Error in StreamBuilder: ${snapshot.error}');
-          return Text('Что-то пошло не так: ${snapshot.error}');
+          return Text('Что-то пошло не так: ${snapshot.error}', style: TextStyle(fontSize: 18));
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -93,7 +93,7 @@ class SavedCards extends StatelessWidget {
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Text('Нет сохраненных карточек');
+          return Text('Нет сохраненных карточек', style: TextStyle(fontSize: 18));
         }
 
         return Column(
@@ -106,7 +106,7 @@ class SavedCards extends StatelessWidget {
               print('Processing card: word="${cardModel.word}", extractedPhrase="${cardModel.extractedPhrase}"');
             } catch (e) {
               print("Error creating CardModel: $e");
-              return Text('Ошибка отображения карточки');
+              return Text('Ошибка отображения карточки', style: TextStyle(fontSize: 18));
             }
             return Card(
               margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
@@ -136,19 +136,29 @@ class SavedCards extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: 8),
-                    Text(cardModel.originalSentence),
+                    Text(
+                      cardModel.originalSentence,
+                      style: TextStyle(fontSize: 18),
+                    ),
                     SizedBox(height: 8),
                     Text(
                       cardModel.briefDefinition,
                       style: TextStyle(
+                        fontSize: 18,
                         fontStyle: FontStyle.italic,
                         color: Colors.blue[700],
                       ),
                     ),
                     SizedBox(height: 8),
-                    Text(cardModel.commonCollocations),
+                    Text(
+                      cardModel.commonCollocations,
+                      style: TextStyle(fontSize: 18),
+                    ),
                     SizedBox(height: 8),
-                    Text(cardModel.exampleSentence),
+                    Text(
+                      cardModel.exampleSentence,
+                      style: TextStyle(fontSize: 18),
+                    ),
                   ],
                 ),
               ),
