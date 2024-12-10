@@ -37,13 +37,77 @@ class _FullTextScreenState extends State<FullTextScreen> {
   final ApiService _apiService = ApiService();
   final FirestoreService _firestoreService = FirestoreService();
 
+  String _cleanWord(String word) {
+    return word.replaceAll(RegExp(r'[^\w\s\-]'), '').trim().toLowerCase();
+  }
+
+  List<TextSpan> _buildWordSpans(String phrase, String word) {
+    print('Building spans for phrase: "$phrase", word: "$word"');
+    
+    final cleanWord = _cleanWord(word);
+    final cleanPhrase = _cleanWord(phrase);
+    
+    print('Cleaned word: "$cleanWord", cleaned phrase: "$cleanPhrase"');
+
+    // Найти все возможные части фразы, содержащие очищенное слово
+    final List<String> parts = cleanPhrase.split(' ');
+    int startIndex = -1;
+    int endIndex = -1;
+    
+    // Ищем слово как часть фразы
+    for (int i = 0; i < parts.length; i++) {
+      String currentPart = '';
+      for (int j = i; j < parts.length; j++) {
+        if (currentPart.isNotEmpty) currentPart += ' ';
+        currentPart += parts[j];
+        if (currentPart == cleanWord) {
+          startIndex = i;
+          endIndex = j;
+          break;
+        }
+      }
+      if (startIndex != -1) break;
+    }
+
+    print('Found word at positions: start=$startIndex, end=$endIndex');
+
+    if (startIndex == -1) {
+      print('Word not found in phrase');
+      return [TextSpan(text: phrase)];
+    }
+
+    // Находим соответствующие позиции в оригинальной фразе
+    final originalParts = phrase.split(' ');
+    final beforeWord = originalParts.take(startIndex).join(' ');
+    final wordPart = originalParts.skip(startIndex).take(endIndex - startIndex + 1).join(' ');
+    final afterWord = originalParts.skip(endIndex + 1).join(' ');
+
+    print('Split phrase into: before="$beforeWord", word="$wordPart", after="$afterWord"');
+
+    final spans = <TextSpan>[];
+    
+    if (beforeWord.isNotEmpty) {
+      spans.add(TextSpan(text: beforeWord + ' '));
+    }
+    
+    spans.add(TextSpan(
+      text: wordPart,
+      style: TextStyle(fontWeight: FontWeight.bold),
+    ));
+    
+    if (afterWord.isNotEmpty) {
+      spans.add(TextSpan(text: ' ' + afterWord));
+    }
+
+    print('Created spans: $spans');
+    return spans;
+  }
+
   String _extractSentence(String text, String word) {
-    // Разбиваем текст на предложения
     final sentences = text.split(RegExp(r'(?<=[.!?])\s+'));
-    // Ищем предложение, содержащее слово
     return sentences.firstWhere(
-      (sentence) => sentence.toLowerCase().contains(word.toLowerCase()),
-      orElse: () => text, // Если не найдено, возвращаем весь текст
+      (sentence) => sentence.toLowerCase().contains(_cleanWord(word)),
+      orElse: () => text,
     );
   }
 
@@ -90,30 +154,21 @@ class _FullTextScreenState extends State<FullTextScreen> {
       return;
     }
 
-    print("_simplifyText called");
     setState(() {
       _isLoading = true;
     });
 
     try {
-      print("Current simplified text: $_simplifiedText");
-      print("Is simplified: $_isSimplified");
-
       if (_simplifiedText == null || _simplifiedText!.isEmpty) {
         _simplifiedText = await _apiService.simplifyText(widget.text);
         _simplifiedText = TextUtils.fixEncoding(_simplifiedText!);
-        print("New simplified text: $_simplifiedText");
-        
         await _firestoreService.saveSimplifiedText(widget.documentId, _simplifiedText!);
-        print("Simplified text saved to Firestore");
       }
 
       setState(() {
         _isSimplified = !_isSimplified;
         _currentText = _isSimplified ? _simplifiedText! : TextUtils.fixEncoding(widget.text);
       });
-      print("Is simplified after update: $_isSimplified");
-      print("Current text updated: $_currentText");
     } catch (e) {
       print("Error in _simplifyText: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,7 +185,6 @@ class _FullTextScreenState extends State<FullTextScreen> {
     print("Show word info for: $word");
     print("Full sentence context: $sentence");
 
-    // Извлекаем только предложение, содержащее слово
     final relevantSentence = _extractSentence(sentence, word);
     print("Extracted relevant sentence: $relevantSentence");
 
@@ -158,26 +212,18 @@ class _FullTextScreenState extends State<FullTextScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Заголовок с extracted_phrase и выделенным словом
                   RichText(
                     text: TextSpan(
                       style: TextStyle(fontSize: 18, color: Colors.black),
-                      children: [
-                        TextSpan(
-                          text: cardModel.word,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(
-                          text: cardModel.extractedPhrase.substring(cardModel.word.length),
-                        ),
-                      ],
+                      children: _buildWordSpans(
+                        cardModel.extractedPhrase,
+                        cardModel.word,
+                      ),
                     ),
                   ),
                   SizedBox(height: 10),
-                  // Оригинальное предложение
                   Text(cardModel.originalSentence),
                   SizedBox(height: 10),
-                  // Определение (выделено курсивом и цветом)
                   Text(
                     cardModel.briefDefinition,
                     style: TextStyle(
@@ -186,10 +232,8 @@ class _FullTextScreenState extends State<FullTextScreen> {
                     ),
                   ),
                   SizedBox(height: 10),
-                  // Распространенные словосочетания
                   Text(cardModel.commonCollocations),
                   SizedBox(height: 10),
-                  // Пример предложения
                   Text(cardModel.exampleSentence),
                 ],
               ),

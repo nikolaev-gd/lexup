@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class CardModel {
   final String word;
   final String extractedPhrase;
@@ -16,14 +18,26 @@ class CardModel {
   });
 
   factory CardModel.fromMap(Map<String, dynamic> map) {
-    return CardModel(
-      word: map['word'] as String,
-      extractedPhrase: map['extracted_phrase'] as String,
-      originalSentence: map['original_sentence'] as String,
-      briefDefinition: map['brief_definition'] as String,
-      commonCollocations: map['common_collocations'] as String,
-      exampleSentence: map['example_sentence'] as String,
+    final cardModel = CardModel(
+      word: (map['word'] as String?) ?? '',
+      extractedPhrase: (map['extracted_phrase'] as String?) ?? '',
+      originalSentence: (map['original_sentence'] as String?) ?? '',
+      briefDefinition: (map['brief_definition'] as String?) ?? '',
+      commonCollocations: (map['common_collocations'] as String?) ?? '',
+      exampleSentence: (map['example_sentence'] as String?) ?? '',
     );
+
+    if (kDebugMode) {
+      print('Creating CardModel:');
+      print('word: ${cardModel.word}');
+      print('extractedPhrase: ${cardModel.extractedPhrase}');
+      print('originalSentence: ${cardModel.originalSentence}');
+      print('briefDefinition: ${cardModel.briefDefinition}');
+      print('commonCollocations: ${cardModel.commonCollocations}');
+      print('exampleSentence: ${cardModel.exampleSentence}');
+    }
+
+    return cardModel;
   }
 
   Map<String, String> toMap() {
@@ -35,5 +49,10 @@ class CardModel {
       'common_collocations': commonCollocations,
       'example_sentence': exampleSentence,
     };
+  }
+
+  @override
+  String toString() {
+    return 'CardModel(word: $word, extractedPhrase: $extractedPhrase)';
   }
 }
