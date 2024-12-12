@@ -86,7 +86,7 @@ class ApiService {
    Include the original sentence `$sentence` exactly as it was provided, without any additional text.
 
 3. Provide a brief definition (briefDefinition):  
-   Give a concise definition (maximum 5 words) of `$word`, considering its role in the extracted phrase. The definition should clarify the word's meaning in this specific usage.
+   Give a concise definition (no more than 5 words) of `$word` using basic, simple, common, everyday vocabulary. Ensure the definition explains the word's meaning clearly in this specific context. The definition should be immediately clear to a general audience.
 
 4. List three common collocations (commonCollocations):  
    Provide three additional common collocations that typically include `$word`. These collocations should be separated by commas.
