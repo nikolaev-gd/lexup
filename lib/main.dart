@@ -22,6 +22,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Lexup',
+      debugShowCheckedModeBanner: false, // Disable DEBUG banner
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -54,21 +55,21 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    // Автоматический вход при запуске
+    // Auto login on startup
     _autoSignIn();
   }
 
   Future<void> _autoSignIn() async {
     try {
       if (FirebaseAuth.instance.currentUser == null) {
-        // Используем существующий метод входа через email
+        // Use existing email login method
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: 'nikolaev.gd@gmail.com',
           password: 'Gagauz1a'
         );
       }
     } catch (e) {
-      print('Ошибка автовхода: $e');
+      print('Auto login error: $e');
       setState(() {
         _hasError = true;
       });
@@ -84,18 +85,18 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Показываем индикатор загрузки только при первом входе
+        // Show loading indicator only on first login
         if (_isLoading) {
           return Center(child: CircularProgressIndicator());
         }
 
-        // Показываем сообщение об ошибке только если вход действительно не удался
+        // Show error message only if login actually failed
         if (!snapshot.hasData && _hasError) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('Ошибка автоматического входа'),
+                Text('Auto login error'),
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
@@ -104,14 +105,14 @@ class _AuthGateState extends State<AuthGate> {
                     });
                     _autoSignIn();
                   },
-                  child: Text('Повторить'),
+                  child: Text('Retry'),
                 ),
               ],
             ),
           );
         }
 
-        // Если есть данные пользователя или процесс входа еще идет, показываем HomePage
+        // If user data exists or login is in progress, show HomePage
         return HomePage();
       },
     );
@@ -231,7 +232,7 @@ class HomeContent extends StatelessWidget {
                       link: link,
                       title: text.isNotEmpty 
                         ? text.split('\n')[0].replaceAll(RegExp(r'\*\*|__|\*|_|#+\s'), '').trim()
-                        : 'Ссылка',
+                        : 'Link',
                       documentId: document.id,
                     ),
                   ),
@@ -239,7 +240,7 @@ class HomeContent extends StatelessWidget {
               },
               onDelete: () async {
                 try {
-                  // Удаление всех карточек слов, связанных с этой карточкой контента
+                  // Delete all word cards related to this content card
                   final cardsSnapshot = await FirebaseFirestore.instance
                       .collection('users')
                       .doc(user?.uid)
@@ -254,22 +255,22 @@ class HomeContent extends StatelessWidget {
                     batch.delete(cardDoc.reference);
                   }
 
-                  // Удаление самой карточки контента
+                  // Delete the content card itself
                   batch.delete(FirebaseFirestore.instance
                       .collection('users')
                       .doc(user?.uid)
                       .collection('content')
                       .doc(document.id));
 
-                  // Выполнение всех операций удаления
+                  // Execute all delete operations
                   await batch.commit();
 
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Контент и связанные карточки слов успешно удалены')),
+                    SnackBar(content: Text('Content and related cards successfully deleted')),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Ошибка при удалении контента: $e')),
+                    SnackBar(content: Text('Error deleting content: $e')),
                   );
                 }
               },
