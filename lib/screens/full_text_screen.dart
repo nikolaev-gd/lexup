@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:lexup/services/api_service.dart';
 import 'package:lexup/services/firestore_service.dart';
 import 'package:lexup/models/card_model.dart';
-import 'package:lexup/widgets/clickable_text.dart';
+import 'package:lexup/widgets/markdown_text.dart';
 import 'package:lexup/widgets/saved_cards.dart';
 import 'package:lexup/utils/text_utils.dart';
 
@@ -368,7 +368,7 @@ class _FullTextScreenState extends State<FullTextScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.text.isNotEmpty)
-              ClickableText(
+              MarkdownText(
                 text: _currentText,
                 fontSize: _fontSize,
                 onWordTap: _showWordInfo,
