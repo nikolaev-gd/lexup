@@ -42,30 +42,76 @@ class MainPage extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
+  @override
+  _AuthGateState createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Автоматический вход при запуске
+    _autoSignIn();
+  }
+
+  Future<void> _autoSignIn() async {
+    try {
+      if (FirebaseAuth.instance.currentUser == null) {
+        // Используем существующий метод входа через email
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: 'nikolaev.gd@gmail.com',
+          password: 'Gagauz1a'
+        );
+      }
+    } catch (e) {
+      print('Ошибка автовхода: $e');
+      setState(() {
+        _hasError = true;
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return firebase_ui.SignInScreen(
-            providers: [
-              firebase_ui.EmailAuthProvider(),
-              GoogleProvider(clientId: "1091391650743-bo683vtbjud52umtcbofbahm70sjnqo1.apps.googleusercontent.com"),
-            ],
-            headerBuilder: (context, constraints, shrinkOffset) {
-              return Padding(
-                padding: const EdgeInsets.all(20),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.asset('assets/lexup_logo.png'),
+        // Показываем индикатор загрузки только при первом входе
+        if (_isLoading) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        // Показываем сообщение об ошибке только если вход действительно не удался
+        if (!snapshot.hasData && _hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Ошибка автоматического входа'),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _isLoading = true;
+                      _hasError = false;
+                    });
+                    _autoSignIn();
+                  },
+                  child: Text('Повторить'),
                 ),
-              );
-            },
+              ],
+            ),
           );
         }
 
+        // Если есть данные пользователя или процесс входа еще идет, показываем HomePage
         return HomePage();
       },
     );
